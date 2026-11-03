@@ -1,12 +1,6 @@
-### Example:
-### mvn package && docker build . -t petclinic:latest
+# Buildumgebung fuer Maven inklusive Tests
+FROM maven:3.9.9-eclipse-temurin-21
 
-FROM maven:3.6.0-jdk-11-slim
+WORKDIR /workspace
 
-WORKDIR home
-
-COPY target/spring-petclinic*.jar .
-
-###ENTRYPOINT java -jar spring-petclinic*.jar
-
-CMD java -Xmx512m -Xms512m -jar spring-petclinic*.jar --server.port=${PORT}
+CMD ["mvn", "-B", "clean", "verify"]

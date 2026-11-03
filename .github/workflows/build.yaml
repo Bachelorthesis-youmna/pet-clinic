@@ -1,26 +1,31 @@
-name: Docker Build and Release
-on: [ push ]
-env:
-#### An dieser Stelle müssen eure persönlichen Umgebungsvariablen eingetragen werden
-  # Tipp: Die Token/der API-Key werden als Secrets in den Repository-Settings eingetragen und hier referenziert.
-  GITHUB_ACCESSTOKEN: ${{ secrets.token }}
+name: Build
+on: [ push, pull_request ]
 
 jobs:
   compile:
     name: Compile
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup Java
-      uses: actions/setup-java@v2
-      with:
-        distribution: temurin
-        java-version: 17
+    - name: Checkout repository
+      uses: actions/checkout@v4
   
-    - name: Compile, build and push
+    - name: Docker-Buildumgebung erstellen
+      run: docker build --file Dockerfile --tag petclinic-ci .
+
+    - name: Maven-Build mit Tests
+      shell: bash
       run: |
-        #### AUFGABE COMPILE, DOCKER BUILD UND PUSH
-        mvn package
-        docker login --username yummi2 --password $GITHUB_ACCESSTOKEN ghcr.io
-        docker build -t ghcr.io/yummi2/pet-clinic:latest .
-        docker push ghcr.io/yummi2/pet-clinic:latest
+        set -o pipefail
+        docker run --rm \
+          --mount "type=bind,source=${GITHUB_WORKSPACE},target=/workspace" \
+          petclinic-ci 2>&1 | tee maven.log
+    
+    - name: Maven-Log und Testberichte speichern
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: maven-diagnostics
+        path: |
+          maven.log
+          **/target/surefire-reports/**
+        if-no-files-found: warn
